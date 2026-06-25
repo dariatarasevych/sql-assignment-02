@@ -191,3 +191,13 @@ SELECT
     MAX(CONCAT(song_title, ': ', cnt)) FILTER (WHERE max_rn = 1) AS max_cnt
 FROM ranked_songs;
 		
+-- ==========================================
+-- Optimizer Control
+-- вимикає і вмикає індексацію
+-- ==========================================
+
+SET enable_indexscan = OFF;
+SET enable_bitmapscan = OFF;
+
+SET enable_indexscan = ON;
+SET enable_bitmapscan = ON;
