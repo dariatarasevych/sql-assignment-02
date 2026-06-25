@@ -103,7 +103,7 @@ SELECT
 				FROM playlists AS p
 				JOIN music AS m
 					ON p.song_id = m.song_id
-				JOIN users asAS u 
+				JOIN users AS u 
 					ON p.user_id = u.user_id
 				WHERE p.added_date > DATE '2026-01-01'
 					AND u.subscription_type = 'premium'
