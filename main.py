@@ -10,7 +10,7 @@ from faker import Faker
 # Connection settings
 HOST = 'localhost' # put your credentials here
 USER = 'postgres' # put your credentials here
-PASSWORD = 'Sdx12411' # put your credentials here
+PASSWORD = 'my_password1' # put your credentials here
 DATABASE = 'music_platform' # put your credentials here
 PORT = '5432' # put your credentials here
 
