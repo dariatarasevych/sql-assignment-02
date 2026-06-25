@@ -30,3 +30,164 @@ CREATE TABLE IF NOT EXISTS playlists (
     CONSTRAINT fk_playlist_songs
         FOREIGN KEY (song_id) REFERENCES music(song_id)
 );
+
+
+-- ============================================================
+-- 1. Non-optimized query
+
+--запит знаходить у базі даних найменш популярну (яку додавали найменше разів) та найбільш популярну (яку додавали найбільше разів) пісню 
+--серед усіх користувачів із premium підпискою, які додали цю пісню після 1 січня 2026 року
+
+--результат запиту виводиться у вигляді двох стовпчиків: min_cnt та max_cnt, де через двокрапку вказано назву пісні та кількість її додавань
+-- ============================================================
+
+EXPLAIN ANALYZE
+SELECT
+	(
+		SELECT CONCAT(song_title, ': ', cnt)
+		FROM (
+			SELECT song_title, count(*) AS cnt
+			FROM (
+				SELECT 
+					p.playlist_id,
+					p.added_date,
+					m.song_id,
+					m.song_title,
+					u.user_id
+				FROM playlists AS p
+				JOIN music AS m
+					ON p.song_id = m.song_id
+				JOIN users AS u 
+					ON p.user_id = u.user_id
+				WHERE p.added_date > DATE '2026-01-01'
+					AND u.subscription_type = 'premium'
+			) AS sub1
+			GROUP BY song_title
+		) AS sub2
+		WHERE cnt = (
+			SELECT min(cnt)
+			FROM (
+				SELECT count(*) AS cnt
+				FROM (
+					SELECT 
+						p.playlist_id,
+						p.added_date,
+						m.song_id,
+						m.song_title,
+						u.user_id
+					FROM playlists AS p
+					JOIN music AS m
+						ON p.song_id = m.song_id
+					JOIN users AS u 
+						ON p.user_id = u.user_id
+					WHERE p.added_date > DATE '2026-01-01'
+						AND u.subscription_type = 'premium'
+				) AS sub3
+				GROUP BY song_title
+			) AS sub4
+		)
+		LIMIT 1
+	) AS min_cnt,
+	
+	(
+		SELECT CONCAT(song_title, ': ', cnt)
+		FROM (
+			SELECT song_title, count(*) AS cnt
+			FROM (
+				SELECT 
+					p.playlist_id,
+					p.added_date,
+					m.song_id,
+					m.song_title,
+					u.user_id
+				FROM playlists AS p
+				JOIN music AS m
+					ON p.song_id = m.song_id
+				JOIN users asAS u 
+					ON p.user_id = u.user_id
+				WHERE p.added_date > DATE '2026-01-01'
+					AND u.subscription_type = 'premium'
+			) AS sub1
+			GROUP BY song_title
+		) AS sub2
+		WHERE cnt = (
+			SELECT max(cnt)
+			FROM (
+				SELECT count(*) AS cnt
+				FROM (
+					SELECT 
+						p.playlist_id,
+						p.added_date,
+						m.song_id,
+						m.song_title,
+						u.user_id
+					FROM playlists AS p
+					JOIN music AS m
+						ON p.song_id = m.song_id
+					JOIN users AS u 
+						ON p.user_id = u.user_id
+					WHERE p.added_date > DATE '2026-01-01'
+						AND u.subscription_type = 'premium'
+				) AS sub3
+				GROUP BY song_title
+			) AS sub4
+		)
+		LIMIT 1
+	) AS max_cnt;
+	
+
+-- ============================================================
+-- 2. Indexes for optimization
+-- ============================================================
+
+CREATE INDEX IF NOT EXISTS idx_playlists_added_date
+    ON playlists(added_date);
+
+CREATE INDEX IF NOT EXISTS idx_playlists_song_id
+    ON playlists(song_id);
+
+CREATE INDEX IF NOT EXISTS idx_playlists_user_id
+    ON playlists(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_music_users_subscription_type
+    ON users(subscription_type);
+
+
+-- ============================================================
+-- 3. Optimized query
+-- ============================================================
+
+EXPLAIN ANALYZE
+WITH filtered_songs AS (
+    SELECT 
+        p.playlist_id,
+        p.added_date,
+        m.song_id,
+        m.song_title,
+        u.user_id
+    FROM playlists AS p
+    JOIN music AS m ON p.song_id = m.song_id
+    JOIN users AS u ON p.user_id = u.user_id
+    WHERE p.added_date > DATE '2026-01-01'
+      AND u.subscription_type = 'premium'
+),
+cnt_songs AS (
+    SELECT 
+        song_title,
+        COUNT(*) AS cnt
+    FROM filtered_songs
+    GROUP BY song_title
+),
+ranked_songs AS (
+    SELECT 
+        song_title,
+        cnt,
+        ROW_NUMBER() OVER (ORDER BY cnt ASC, song_title ASC) AS min_rn,
+        ROW_NUMBER() OVER (ORDER BY cnt DESC, song_title ASC) AS max_rn
+    FROM cnt_songs
+)
+SELECT 
+    MAX(CONCAT(song_title, ': ', cnt)) FILTER (WHERE min_rn = 1) AS min_cnt,
+    MAX(CONCAT(song_title, ': ', cnt)) FILTER (WHERE max_rn = 1) AS max_cnt
+FROM ranked_songs;
+		
