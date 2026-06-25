@@ -10,7 +10,7 @@
 
 Використовує віконні функції ROW_NUMBER(), щоб знайти найменшу та найбільшу кількість за один прохід.
 
-Використовує індекси (added_date, song_id, user_id, subscription_type), що замінило повний перебір диска на швидкісний Bitmap Index Scan.
+Використовує індекси (added_date, song_id, user_id, subscription_type), що замінило повний перебір на швидкий Bitmap Index Scan.
 
 У файлі Explain-Analyze-Query-Plan показано аналіз: виділено місця з Seq Scan та Execution Time: 750.217 ms.
 
